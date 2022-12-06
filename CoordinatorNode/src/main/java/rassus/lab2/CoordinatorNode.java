@@ -25,7 +25,7 @@ public class CoordinatorNode {
         Scanner sc = new Scanner(System.in);
 
         while (true) {
-            System.out.println("Send a command: ");
+            System.out.print("Send a command: ");
             String command = sc.nextLine().toUpperCase();
 
             if(!command.equals("START") && !command.equals("STOP")) {
