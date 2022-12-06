@@ -20,9 +20,9 @@ public class CoordinatorNode {
         Properties producerProperties = new Properties();
         producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, CustomJSONSerializer.class);
+        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
-        Producer<String, JSONObject> producer = new org.apache.kafka.clients.producer.KafkaProducer<>(producerProperties);
+        Producer<String, String> producer = new org.apache.kafka.clients.producer.KafkaProducer<>(producerProperties);
 
         // command input
         Scanner sc = new Scanner(System.in);
@@ -42,7 +42,7 @@ public class CoordinatorNode {
             jsonCommand.put("command", command);
 
             // create producer record for command topic
-            ProducerRecord<String, JSONObject> record = new ProducerRecord<>(TOPIC, null, jsonCommand);
+            ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC, null, jsonCommand.toString());
 
             // send producer record to kafka server
             producer.send(record);
@@ -53,6 +53,7 @@ public class CoordinatorNode {
                 System.out.println("Shutting down...");
                 exit(0);
             }
+
         }
     }
 }
