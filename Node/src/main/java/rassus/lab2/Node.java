@@ -1,8 +1,16 @@
 package rassus.lab2;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
+import java.util.Collections;
+import java.util.Properties;
 import java.util.Scanner;
 
 public class Node {
+    private static String TOPIC0 = "Command";
+    private static String TOPIC1 = "Register";
     public static void main(String[] args) {
         String id;
         String udpPort;
@@ -31,6 +39,17 @@ public class Node {
             udpPort = sc.nextLine();
         }
 
+        // create kafka consumer
+        Properties consumerProperties = new Properties();
+        consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        Consumer<String, String> consumer = new org.apache.kafka.clients.consumer.KafkaConsumer<>(consumerProperties);
+
+        // subscribe node on topics
+        consumer.subscribe(Collections.singleton(TOPIC0));
+        consumer.subscribe(Collections.singleton(TOPIC1));
 
     }
 
