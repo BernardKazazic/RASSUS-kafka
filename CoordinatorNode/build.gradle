@@ -10,6 +10,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.1'
     implementation 'org.json:json:20220924'
     implementation 'org.apache.kafka:kafka_2.13:3.3.1'
 
