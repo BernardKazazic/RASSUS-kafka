@@ -12,6 +12,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.json.JSONObject;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Scanner;
@@ -106,6 +107,23 @@ public class Node {
         // send producer record to kafka server
         producer.send(record);
         producer.flush();
+
+        // get registration messages from kafka topic
+        ArrayList<JSONObject> otherNodesInfo = new ArrayList<>();
+        ConsumerRecords<String, String> otherNodes = consumer.poll(Duration.ofMillis(5000));
+
+        for(ConsumerRecord<String, String> otherNode : otherNodes) {
+            // print record details
+            System.out.printf("Consumer record - topic: %s, partition: %s, offset: %d, key: %s\n",
+                    otherNode.topic(), otherNode.partition(), otherNode.offset(), otherNode.key());
+
+            // parse record value to json
+            if(otherNode.topic().equals(TOPIC1)) {
+                JSONObject otherNodeInfo = new JSONObject(otherNode.value());
+                otherNodesInfo.add(otherNodeInfo);
+            }
+        }
+
     }
 
     public static boolean isValidPort(String stringPort) {
