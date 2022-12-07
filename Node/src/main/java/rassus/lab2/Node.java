@@ -155,9 +155,10 @@ public class Node {
             exit(1);
         }
 
-        // open udp socket
+        // open udp sockets
         try {
-            DatagramSocket socket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000);
+            DatagramSocket serverSocket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000);
+            DatagramSocket clientSocket = new SimpleSimulatedDatagramSocket(0.3, 1000);
         }
         catch (Exception e) {
             e.printStackTrace();
