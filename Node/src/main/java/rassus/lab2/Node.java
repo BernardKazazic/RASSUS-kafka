@@ -179,6 +179,10 @@ public class Node {
     public static class StopCommandConsumer implements Runnable {
         private Consumer<String, String> consumer;
 
+        public StopCommandConsumer(Consumer<String, String> consumer) {
+            this.consumer = consumer;
+        }
+
         @Override
         public void run() {
             while(!stop) {
