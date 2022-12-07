@@ -196,7 +196,7 @@ public class Node {
     }
 
     /**
-     * This class continuously checks if node received stop command.
+     * This class is used to continuously check if node received stop command.
      * When stop command is received, this class sets stop flag and shuts down itself, udp server and udp client threads.
      */
     public static class StopCommandConsumer implements Runnable {
