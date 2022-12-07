@@ -1,5 +1,7 @@
 package rassus.lab2;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -10,12 +12,15 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.json.JSONObject;
+import rassus.lab2.network.SimpleSimulatedDatagramSocket;
 
+import java.io.FileReader;
+import java.io.Reader;
+import java.net.DatagramSocket;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Properties;
-import java.util.Scanner;
+import java.util.*;
+
+import static java.lang.System.exit;
 
 public class Node {
     private static String TOPIC0 = "Command";
@@ -123,6 +128,30 @@ public class Node {
                 otherNodesInfo.add(otherNodeInfo);
             }
         }
+
+        // load readings
+        ArrayList<String> no2Readings = new ArrayList<>();
+        try(Reader csvReader = new FileReader("resources/readings.csv")) {
+            Iterable<CSVRecord> csvRecords = CSVFormat.DEFAULT.parse(csvReader);
+            for(CSVRecord csvRecord : csvRecords) {
+                no2Readings.add(csvRecord.get("NO2"));
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            exit(1);
+        }
+
+        /*
+        // open udp socket
+        try (DatagramSocket socket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000)) {
+
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            exit(1);
+        }
+         */
 
     }
 
