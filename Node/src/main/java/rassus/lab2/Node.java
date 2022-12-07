@@ -31,6 +31,8 @@ public class Node {
         String address = "localhost";
         String udpPort;
         long startTime = System.currentTimeMillis() / 1000;
+        boolean startFlag = false;
+
         Scanner sc = new Scanner(System.in);
 
         // initialize node id and port values
@@ -69,10 +71,9 @@ public class Node {
         consumer.subscribe(Collections.singleton(TOPIC1));
 
         // wait for start command
-        while(true) {
+        while(!startFlag) {
             // poll for records
             ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofMillis(1000));
-            boolean startFlag = false;
 
             for(ConsumerRecord<String, String> record : consumerRecords) {
                 // print record details
@@ -91,7 +92,6 @@ public class Node {
                     }
                 }
             }
-            if(startFlag) break;
         }
 
         // create kafka producer
