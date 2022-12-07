@@ -29,6 +29,7 @@ public class Node {
         String id;
         String address = "localhost";
         String udpPort;
+        long startTime = System.currentTimeMillis() / 1000;
         Scanner sc = new Scanner(System.in);
 
         // initialize node id and port values
@@ -142,16 +143,16 @@ public class Node {
             exit(1);
         }
 
-        /*
         // open udp socket
-        try (DatagramSocket socket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000)) {
-
+        try {
+            DatagramSocket socket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000);
         }
         catch (Exception e) {
             e.printStackTrace();
             exit(1);
         }
-         */
+
+
 
     }
 
@@ -163,5 +164,10 @@ public class Node {
         catch (NumberFormatException e) {
             return false;
         }
+    }
+
+    public static String getReading(ArrayList<String> no2Reading, long startTime) {
+        int index = (int) ((System.currentTimeMillis() / 1000 - startTime) % 100);
+        return no2Reading.get(index);
     }
 }
