@@ -25,6 +25,7 @@ import static java.lang.System.exit;
 public class Node {
     private static String TOPIC0 = "Command";
     private static String TOPIC1 = "Register";
+    private static volatile boolean stop = false;
     public static void main(String[] args) {
         String id;
         String address = "localhost";
@@ -169,5 +170,38 @@ public class Node {
     public static String getReading(ArrayList<String> no2Reading, long startTime) {
         int index = (int) ((System.currentTimeMillis() / 1000 - startTime) % 100);
         return no2Reading.get(index);
+    }
+
+    /**
+     * This class continuously checks if node received stop command.
+     * When stop command is received, this class sets stop flag and shuts down itself, udp server and udp client threads.
+     */
+    public static class StopCommandConsumer implements Runnable {
+        private Consumer<String, String> consumer;
+
+        @Override
+        public void run() {
+            while(!stop) {
+                ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofMillis(1000));
+
+                for(ConsumerRecord<String, String> record : consumerRecords) {
+                    // print record details
+                    System.out.printf("StopCommandConsumer: Consumer record - topic: %s, partition: %s, offset: %d, key: %s\n",
+                            record.topic(), record.partition(), record.offset(), record.key());
+
+                    // parse record value to json object
+                    if(record.topic().equals(TOPIC0)) {
+                        JSONObject command = new JSONObject(record.value());
+
+                        // check if received command is stop
+                        if(command.get("command").toString().toUpperCase().equals("STOP")) {
+                            System.out.println("StopCommandConsumer: Received STOP command. Stopping node.");
+                            stop = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
