@@ -12,6 +12,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.json.JSONObject;
+import rassus.lab2.network.EmulatedSystemClock;
 import rassus.lab2.network.SimpleSimulatedDatagramSocket;
 
 import java.io.FileReader;
@@ -94,6 +95,9 @@ public class Node {
             }
         }
 
+        //initialize emulated system clock (node scalar time)
+        EmulatedSystemClock scalarTime = new EmulatedSystemClock();
+
         // create kafka producer
         Properties producerProperties = new Properties();
         producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
@@ -140,6 +144,13 @@ public class Node {
                     stop = true;
                 }
             }
+        }
+
+        // initialize node vector time
+        HashMap<String, Integer> vectorTime = new HashMap<>();
+        vectorTime.put(id, 0);
+        for(JSONObject otherNodeInfo : otherNodesInfo) {
+            vectorTime.put(otherNodeInfo.getString("id"), 0);
         }
 
         // load readings
