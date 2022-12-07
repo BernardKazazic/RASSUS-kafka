@@ -124,10 +124,21 @@ public class Node {
             System.out.printf("Consumer record - topic: %s, partition: %s, offset: %d, key: %s\n",
                     otherNode.topic(), otherNode.partition(), otherNode.offset(), otherNode.key());
 
-            // parse record value to json
+            // parse record value from register topic to json
             if(otherNode.topic().equals(TOPIC1)) {
                 JSONObject otherNodeInfo = new JSONObject(otherNode.value());
                 otherNodesInfo.add(otherNodeInfo);
+            }
+
+            // parse record value from command topic to json
+            if(otherNode.topic().equals(TOPIC0)) {
+                JSONObject command = new JSONObject(record.value());
+
+                // check if node received stop command
+                if(command.get("command").toString().toUpperCase().equals("STOP")) {
+                    System.out.println("Received STOP command. Stopping node.");
+                    stop = true;
+                }
             }
         }
 
