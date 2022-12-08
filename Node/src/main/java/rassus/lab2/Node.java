@@ -27,10 +27,16 @@ public class Node {
     private static String TOPIC0 = "Command";
     private static String TOPIC1 = "Register";
     private static volatile boolean stop = false;
+    private static volatile HashMap<String, String> notAckMessages = new HashMap<>();
+    private static volatile HashSet<JSONObject> readings = new HashSet<>();
+    private static EmulatedSystemClock scalarTime;
+    private static HashMap<String, Integer> vectorTime;
+    private static String id;
+    private static String address = "localhost";
+    private static String udpPort;
+    private static ArrayList<JSONObject> otherNodesInfo = new ArrayList<>();
+
     public static void main(String[] args) {
-        String id;
-        String address = "localhost";
-        String udpPort;
         long startTime = System.currentTimeMillis() / 1000;
         boolean startFlag = false;
 
@@ -96,7 +102,7 @@ public class Node {
         }
 
         //initialize emulated system clock (node scalar time)
-        EmulatedSystemClock scalarTime = new EmulatedSystemClock();
+        scalarTime = new EmulatedSystemClock();
 
         // create kafka producer
         Properties producerProperties = new Properties();
@@ -120,7 +126,6 @@ public class Node {
         producer.flush();
 
         // get registration messages from kafka topic
-        ArrayList<JSONObject> otherNodesInfo = new ArrayList<>();
         ConsumerRecords<String, String> otherNodes = consumer.poll(Duration.ofMillis(5000));
 
         for(ConsumerRecord<String, String> otherNode : otherNodes) {
@@ -147,7 +152,7 @@ public class Node {
         }
 
         // initialize node vector time
-        HashMap<String, Integer> vectorTime = new HashMap<>();
+        vectorTime = new HashMap<>();
         vectorTime.put(id, 0);
         for(JSONObject otherNodeInfo : otherNodesInfo) {
             vectorTime.put(otherNodeInfo.getString("id"), 0);
