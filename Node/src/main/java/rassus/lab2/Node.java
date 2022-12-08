@@ -30,7 +30,8 @@ public class Node {
     private static String TOPIC1 = "Register";
     private static volatile boolean stop = false;
     private static volatile HashMap<String, String> notAckMessages = new HashMap<>();
-    private static volatile HashSet<JSONObject> readings = new HashSet<>();
+    private static volatile HashSet<JSONObject> allReadings = new HashSet<>();
+    private static volatile HashSet<JSONObject> fiveSecReadings = new HashSet<>();
     private static EmulatedSystemClock scalarTime;
     private static HashMap<String, Integer> vectorTime;
     private static String id;
@@ -226,11 +227,9 @@ public class Node {
 
     public static class UDPServer implements Runnable {
         private DatagramSocket socket;
-        private ArrayList<JSONObject> otherNodesInfo;
 
-        public UDPServer(SimpleSimulatedDatagramSocket socket, ArrayList<JSONObject> otherNodesInfo) {
+        public UDPServer(SimpleSimulatedDatagramSocket socket) {
             this.socket = socket;
-            this.otherNodesInfo = otherNodesInfo;
         }
 
         @Override
@@ -273,7 +272,8 @@ public class Node {
                     reading.put("scalarTime", message.getString("scalarTime"));
                     reading.put("vectorTime", new JSONObject(message.getJSONObject("vectorTime")));
                     reading.put("no2Reading", message.getString("no2Reading"));
-                    readings.add(reading);
+                    fiveSecReadings.add(reading);
+                    allReadings.add(reading);
 
                     // increase vector time for ack message
                     updateVectorTimeSend();
@@ -318,6 +318,19 @@ public class Node {
 
         private void updateVectorTimeSend() {
             incrementVectorTime();
+        }
+    }
+
+    public static class UDPClient implements Runnable {
+        private DatagramSocket socket;
+
+        public UDPClient(SimpleSimulatedDatagramSocket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+
         }
     }
 
