@@ -187,21 +187,6 @@ public class Node {
 
     }
 
-    public static boolean isValidPort(String stringPort) {
-        try {
-            int integerPort = Integer.parseInt(stringPort);
-            return integerPort >= 3000 && integerPort < 4000;
-        }
-        catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    public static String getReading(ArrayList<String> no2Reading, long startTime) {
-        int index = (int) ((System.currentTimeMillis() / 1000 - startTime) % 100);
-        return no2Reading.get(index);
-    }
-
     /**
      * This class is used to continuously check if node received stop command.
      * When stop command is received, this class sets stop flag and shuts down itself, udp server and udp client threads.
@@ -341,5 +326,20 @@ public class Node {
         if(vectorTime != null && id != null) {
             vectorTime.put(id, vectorTime.get(id) + 1);
         }
+    }
+
+    public static boolean isValidPort(String stringPort) {
+        try {
+            int integerPort = Integer.parseInt(stringPort);
+            return integerPort >= 3000 && integerPort < 4000;
+        }
+        catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    public static String getReading(ArrayList<String> no2Reading, long startTime) {
+        int index = (int) ((System.currentTimeMillis() / 1000 - startTime) % 100);
+        return no2Reading.get(index);
     }
 }
