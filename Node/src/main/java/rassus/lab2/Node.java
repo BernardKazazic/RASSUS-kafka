@@ -16,7 +16,9 @@ import rassus.lab2.network.EmulatedSystemClock;
 import rassus.lab2.network.SimpleSimulatedDatagramSocket;
 
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.Reader;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.time.Duration;
 import java.util.*;
@@ -234,6 +236,110 @@ public class Node {
                     }
                 }
             }
+        }
+    }
+
+    public static class UDPServer implements Runnable {
+        private DatagramSocket socket;
+        private ArrayList<JSONObject> otherNodesInfo;
+
+        public UDPServer(SimpleSimulatedDatagramSocket socket, ArrayList<JSONObject> otherNodesInfo) {
+            this.socket = socket;
+            this.otherNodesInfo = otherNodesInfo;
+        }
+
+        @Override
+        public void run() {
+            byte[] receiveBuf = new byte[2048];
+            byte[] sendBuf;
+            String receiveStr;
+
+            while(!stop) {
+                // receive packet
+                DatagramPacket receivedPacket = new DatagramPacket(receiveBuf, receiveBuf.length);
+                try {
+                    socket.receive(receivedPacket);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                    continue;
+                }
+
+                // parse received packet to json
+                receiveStr = new String(receivedPacket.getData(), receivedPacket.getOffset(),
+                        receivedPacket.getLength());
+                JSONObject message = new JSONObject(receiveStr);
+
+                // check message type
+                if(message.getString("type").equalsIgnoreCase("ack")) {
+                    // update times
+                    updateTimesReceive(message);
+
+                    // remove message with received message id from map with not ack messages
+                    notAckMessages.remove(message.getString("messageId"));
+
+                }
+                else if(message.getString("type").equalsIgnoreCase("reading")) {
+                    // update times
+                    updateTimesReceive(message);
+
+                    // parse it to json and save to set with readings
+                    JSONObject reading = new JSONObject();
+                    reading.put("scalarTime", message.getString("scalarTime"));
+                    reading.put("vectorTime", new JSONObject(message.getJSONObject("vectorTime")));
+                    reading.put("no2Reading", message.getString("no2Reading"));
+                    readings.add(reading);
+
+                    // increase vector time for ack message
+                    updateVectorTimeSend();
+
+                    // create ack message
+                    JSONObject ackMessage = new JSONObject();
+                    ackMessage.put("type", "ack");
+                    ackMessage.put("scalarTime", scalarTime.currentTimeMillis());
+                    ackMessage.put("vectorTime", new JSONObject(vectorTime));
+                    ackMessage.put("messageId", message.getString("messageId"));
+
+                    // send ack message
+                    sendBuf = ackMessage.toString().getBytes();
+                    DatagramPacket sendPacket = new DatagramPacket(sendBuf,
+                            sendBuf.length, receivedPacket.getAddress(), receivedPacket.getPort());
+                }
+            }
+        }
+
+        private void updateTimesReceive(JSONObject message) {
+            // update scalar time
+            long messageScalarTime = message.getLong("scalarTime");
+            scalarTime.update(messageScalarTime);
+
+            // update vector time
+            // increase vector time for this node
+            incrementVectorTime();
+
+            // increase vector time for other nodes
+            for (JSONObject otherNodeInfo : otherNodesInfo) {
+                // compare saved vector time and received vector time
+                String otherNodeId = otherNodeInfo.getString("id");
+                int receivedVectorTime = message.getJSONObject("vectorTime").getInt(otherNodeId);
+                int savedVectorTime = vectorTime.get(otherNodeId);
+
+                // if received vector time is greater save it
+                if (receivedVectorTime > savedVectorTime) {
+                    vectorTime.put(otherNodeId, receivedVectorTime);
+                }
+            }
+        }
+
+        private void updateVectorTimeSend() {
+            incrementVectorTime();
+        }
+    }
+
+    public static synchronized void incrementVectorTime() {
+        // increment vector time for this node
+        if(vectorTime != null && id != null) {
+            vectorTime.put(id, vectorTime.get(id) + 1);
         }
     }
 }
