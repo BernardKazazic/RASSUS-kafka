@@ -40,4 +40,13 @@ public class Reading {
     public void setNo2Reading(double no2Reading) {
         this.no2Reading = no2Reading;
     }
+
+    @Override
+    public String toString() {
+        return "Reading{" +
+                "scalarTime=" + scalarTime +
+                ", vectorTime=" + vectorTime +
+                ", no2Reading=" + no2Reading +
+                '}';
+    }
 }
