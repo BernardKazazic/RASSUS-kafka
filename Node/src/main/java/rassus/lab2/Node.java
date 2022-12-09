@@ -217,6 +217,18 @@ public class Node {
             }
         }
 
+        // after stop command sort and print out all readings
+        // create comparator that compares by scalar and vector time
+        ScalarTimeComparator scComp = new ScalarTimeComparator();
+        VectorTimeComparator vcComp = new VectorTimeComparator();
+        Comparator<Reading> comp = scComp.thenComparing(vcComp);
+
+        // create temp list that will be sorted
+        List<Reading> temp = new ArrayList<>(allReadings);
+
+        // sort temp list and print it out
+        temp.sort(comp);
+        temp.forEach(System.out::println);
     }
 
     /**
