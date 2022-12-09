@@ -468,8 +468,8 @@ public class Node {
         }
     }
 
-    public static String getReading(ArrayList<String> no2Reading, long startTime) {
-        int index = (int) ((System.currentTimeMillis() / 1000 - startTime) % 100);
-        return no2Reading.get(index);
+    public static String getReading() {
+        int index = (int) ((scalarTime.currentTimeMillis() / 1000) % 100);
+        return no2Readings.get(index);
     }
 }
