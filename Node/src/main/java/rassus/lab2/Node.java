@@ -182,16 +182,40 @@ public class Node {
         }
 
         // open udp sockets
+        DatagramSocket serverSocket = null;
+        DatagramSocket clientSocket = null;
         try {
-            DatagramSocket serverSocket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000);
-            DatagramSocket clientSocket = new SimpleSimulatedDatagramSocket(0.3, 1000);
+            serverSocket = new SimpleSimulatedDatagramSocket(Integer.parseInt(udpPort), 0.3, 1000);
+            clientSocket = new SimpleSimulatedDatagramSocket(0.3, 1000);
         }
         catch (Exception e) {
             e.printStackTrace();
             exit(1);
         }
 
+        // start udp server, udp client, stop command consumer and readings sorter in separate threads
+        Thread[] threads = new Thread[4];
+        StopCommandConsumer stopCommandConsumer = new StopCommandConsumer(consumer);
+        UDPServer udpServer = new UDPServer(serverSocket);
+        UDPClient udpClient = new UDPClient(clientSocket);
+        ReadingsSorter readingsSorter = new ReadingsSorter();
 
+        threads[0] = new Thread(stopCommandConsumer);
+        threads[1] = new Thread(udpServer);
+        threads[2] = new Thread(udpClient);
+        threads[3] = new Thread(readingsSorter);
+
+        for (Thread thread : threads) {
+            thread.start();
+        }
+
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
     }
 
@@ -235,7 +259,7 @@ public class Node {
     public static class UDPServer implements Runnable {
         private DatagramSocket socket;
 
-        public UDPServer(SimpleSimulatedDatagramSocket socket) {
+        public UDPServer(DatagramSocket socket) {
             this.socket = socket;
         }
 
@@ -335,7 +359,7 @@ public class Node {
         private DatagramSocket socket;
         private long messageCounter;
 
-        public UDPClient(SimpleSimulatedDatagramSocket socket) {
+        public UDPClient(DatagramSocket socket) {
             this.socket = socket;
             messageCounter = 0;
         }
