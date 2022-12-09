@@ -22,10 +22,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.*;
 
 import static java.lang.System.exit;
+import static java.lang.Thread.sleep;
 
 public class Node {
     private static String TOPIC0 = "Command";
@@ -330,14 +333,121 @@ public class Node {
 
     public static class UDPClient implements Runnable {
         private DatagramSocket socket;
+        private long messageCounter;
 
         public UDPClient(SimpleSimulatedDatagramSocket socket) {
             this.socket = socket;
+            messageCounter = 0;
         }
 
         @Override
         public void run() {
+            while(!stop) {
+                // get reading for sending
+                Double no2Reading = Double.valueOf(getReading());
 
+                // build reading
+                Reading reading = new Reading();
+                reading.setScalarTime(scalarTime.currentTimeMillis());
+                reading.setVectorTime(vectorTime);
+                reading.setNo2Reading(no2Reading);
+
+                // add the reading to readings adn 5 second readings
+                allReadings.add(reading);
+                fiveSecReadings.add(reading);
+
+                // send message to all other nodes
+                for(NodeInfo otherNodeInfo : otherNodesInfo) {
+                    // create destination address for node
+                    InetAddress destAddress = null;
+                    try {
+                        destAddress = InetAddress.getByName(otherNodeInfo.getAddress());
+                    } catch (UnknownHostException e) {
+                        System.out.println("UDP Client: unknown address for node " + otherNodeInfo.getId());
+                    }
+
+                    // increment vector time before sending
+                    incrementVectorTime();
+
+                    // build message for sending
+                    ReadingMessage message = new ReadingMessage();
+                    message.setScalarTime(scalarTime.currentTimeMillis());
+                    message.setVectorTime(vectorTime);
+                    message.setNo2Reading(no2Reading);
+                    message.setNodeId(otherNodeInfo.getId());
+                    message.setMessageId(new MessageId(messageCounter, otherNodeInfo.getId()));
+
+                    // prepare buffer for sending
+                    JSONObject messageJson = new JSONObject(message);
+                    byte[] sendBuf = messageJson.toString().getBytes();
+
+                    // create a datagram packet for sending data
+                    DatagramPacket packet = new DatagramPacket(sendBuf, sendBuf.length,
+                            destAddress, Integer.parseInt(otherNodeInfo.getPort()));
+
+                    // send a datagram packet from this socket
+                    try {
+                        socket.send(packet);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    // add message to not ack
+                    notAckMessages.put(message.getMessageId(), message);
+                }
+
+                // resend not ack messages
+                notAckMessages.forEach((k, v) -> {
+                    // for messages not sent in this cycle
+                    if(k.getMessageNumber() != messageCounter) {
+                        // get node info
+                        NodeInfo otherNodeInfo = null;
+                        for(NodeInfo temp : otherNodesInfo) {
+                            if(temp.getId().equalsIgnoreCase(v.getNodeId())) {
+                                otherNodeInfo = temp;
+                                break;
+                            }
+                        }
+                        if(otherNodeInfo == null) return;
+
+                        // create destination address for node
+                        InetAddress destAddress = null;
+                        try {
+                            destAddress = InetAddress.getByName(otherNodeInfo.getAddress());
+                        } catch (UnknownHostException e) {
+                            System.out.println("UDP Client: unknown address for node " + otherNodeInfo.getId());
+                        }
+
+                        // increment vector time before sending
+                        incrementVectorTime();
+
+                        // prepare buffer for sending
+                        JSONObject messageJson = new JSONObject(v);
+                        byte[] sendBuf = messageJson.toString().getBytes();
+
+                        // create a datagram packet for sending data
+                        DatagramPacket packet = new DatagramPacket(sendBuf, sendBuf.length,
+                                destAddress, Integer.parseInt(otherNodeInfo.getPort()));
+
+                        // send a datagram packet from this socket
+                        try {
+                            socket.send(packet);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+
+                // increase message counter
+                messageCounter++;
+
+                // wait one second
+                try {
+                    sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
     }
 
