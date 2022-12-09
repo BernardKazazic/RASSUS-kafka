@@ -12,6 +12,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.json.JSONObject;
+import rassus.lab2.DTO.AckMessage;
+import rassus.lab2.DTO.ReadingMessage;
 import rassus.lab2.network.EmulatedSystemClock;
 import rassus.lab2.network.SimpleSimulatedDatagramSocket;
 
@@ -29,15 +31,16 @@ public class Node {
     private static String TOPIC0 = "Command";
     private static String TOPIC1 = "Register";
     private static volatile boolean stop = false;
-    private static volatile HashMap<String, String> notAckMessages = new HashMap<>();
-    private static volatile HashSet<JSONObject> allReadings = new HashSet<>();
-    private static volatile HashSet<JSONObject> fiveSecReadings = new HashSet<>();
+    private static volatile HashMap<MessageId, ReadingMessage> notAckMessages = new HashMap<>();
+    private static volatile HashSet<Reading> allReadings = new HashSet<>();
+    private static volatile HashSet<Reading> fiveSecReadings = new HashSet<>();
     private static EmulatedSystemClock scalarTime;
     private static HashMap<String, Integer> vectorTime;
     private static String id;
     private static String address = "localhost";
     private static String udpPort;
-    private static ArrayList<JSONObject> otherNodesInfo = new ArrayList<>();
+    private static ArrayList<NodeInfo> otherNodesInfo = new ArrayList<>();
+    private static ArrayList<String> no2Readings = new ArrayList<>();
 
     public static void main(String[] args) {
         long startTime = System.currentTimeMillis() / 1000;
@@ -116,13 +119,14 @@ public class Node {
         Producer<String, String> producer = new org.apache.kafka.clients.producer.KafkaProducer<>(producerProperties);
 
         // create message for registration
-        JSONObject registerData = new JSONObject();
-        registerData.put("id", id);
-        registerData.put("address", address);
-        registerData.put("port", udpPort);
+        NodeInfo registerData = new NodeInfo();
+        registerData.setId(id);
+        registerData.setAddress(address);
+        registerData.setPort(udpPort);
+        JSONObject registerDataJson = new JSONObject(registerData);
 
         // create producer record for registration data
-        ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC1, null, registerData.toString());
+        ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC1, null, registerDataJson.toString());
 
         // send producer record to kafka server
         producer.send(record);
@@ -136,9 +140,10 @@ public class Node {
             System.out.printf("Consumer record - topic: %s, partition: %s, offset: %d, key: %s\n",
                     otherNode.topic(), otherNode.partition(), otherNode.offset(), otherNode.key());
 
-            // parse record value from register topic to json
+            // parse record value from register topic to NodeInfo
             if(otherNode.topic().equals(TOPIC1)) {
-                JSONObject otherNodeInfo = new JSONObject(otherNode.value());
+                JSONObject otherNodeInfoJson = new JSONObject(otherNode.value());
+                NodeInfo otherNodeInfo = new NodeInfo(otherNodeInfoJson);
                 otherNodesInfo.add(otherNodeInfo);
             }
 
@@ -157,12 +162,11 @@ public class Node {
         // initialize node vector time
         vectorTime = new HashMap<>();
         vectorTime.put(id, 0);
-        for(JSONObject otherNodeInfo : otherNodesInfo) {
-            vectorTime.put(otherNodeInfo.getString("id"), 0);
+        for(NodeInfo otherNodeInfo : otherNodesInfo) {
+            vectorTime.put(otherNodeInfo.getId(), 0);
         }
 
         // load readings
-        ArrayList<String> no2Readings = new ArrayList<>();
         try(Reader csvReader = new FileReader("resources/readings.csv")) {
             Iterable<CSVRecord> csvRecords = CSVFormat.DEFAULT.parse(csvReader);
             for(CSVRecord csvRecord : csvRecords) {
@@ -256,22 +260,25 @@ public class Node {
 
                 // check message type
                 if(message.getString("type").equalsIgnoreCase("ack")) {
+                    // create ack message
+                    AckMessage ackMessage = new AckMessage(message);
+
                     // update times
-                    updateTimesReceive(message);
+                    updateTimesReceive(ackMessage);
 
                     // remove message with received message id from map with not ack messages
-                    notAckMessages.remove(message.getString("messageId"));
+                    notAckMessages.remove(ackMessage.getMessageId());
 
                 }
                 else if(message.getString("type").equalsIgnoreCase("reading")) {
-                    // update times
-                    updateTimesReceive(message);
+                    // create reading message
+                    ReadingMessage readingMessage = new ReadingMessage(message);
 
-                    // parse it to json and save to set with readings
-                    JSONObject reading = new JSONObject();
-                    reading.put("scalarTime", message.getString("scalarTime"));
-                    reading.put("vectorTime", new JSONObject(message.getJSONObject("vectorTime")));
-                    reading.put("no2Reading", message.getString("no2Reading"));
+                    // update times
+                    updateTimesReceive(readingMessage);
+
+                    // construct reading with reading message and save to set with readings
+                    Reading reading = new Reading(readingMessage);
                     fiveSecReadings.add(reading);
                     allReadings.add(reading);
 
@@ -279,23 +286,23 @@ public class Node {
                     updateVectorTimeSend();
 
                     // create ack message
-                    JSONObject ackMessage = new JSONObject();
-                    ackMessage.put("type", "ack");
-                    ackMessage.put("scalarTime", scalarTime.currentTimeMillis());
-                    ackMessage.put("vectorTime", new JSONObject(vectorTime));
-                    ackMessage.put("messageId", message.getString("messageId"));
+                    AckMessage ackMessage = new AckMessage();
+                    ackMessage.setScalarTime(scalarTime.currentTimeMillis());
+                    ackMessage.setVectorTime(vectorTime);
+                    ackMessage.setMessageId(readingMessage.getMessageId());
 
                     // send ack message
-                    sendBuf = ackMessage.toString().getBytes();
+                    JSONObject ackMessageJson = new JSONObject(ackMessage);
+                    sendBuf = ackMessageJson.toString().getBytes();
                     DatagramPacket sendPacket = new DatagramPacket(sendBuf,
                             sendBuf.length, receivedPacket.getAddress(), receivedPacket.getPort());
                 }
             }
         }
 
-        private void updateTimesReceive(JSONObject message) {
+        private void updateTimesReceive(Message message) {
             // update scalar time
-            long messageScalarTime = message.getLong("scalarTime");
+            long messageScalarTime = message.getScalarTime();
             scalarTime.update(messageScalarTime);
 
             // update vector time
@@ -303,10 +310,10 @@ public class Node {
             incrementVectorTime();
 
             // increase vector time for other nodes
-            for (JSONObject otherNodeInfo : otherNodesInfo) {
+            for (NodeInfo otherNodeInfo : otherNodesInfo) {
                 // compare saved vector time and received vector time
-                String otherNodeId = otherNodeInfo.getString("id");
-                int receivedVectorTime = message.getJSONObject("vectorTime").getInt(otherNodeId);
+                String otherNodeId = otherNodeInfo.getId();
+                int receivedVectorTime = message.getVectorTime().get(otherNodeId);
                 int savedVectorTime = vectorTime.get(otherNodeId);
 
                 // if received vector time is greater save it
