@@ -451,6 +451,38 @@ public class Node {
         }
     }
 
+    public static class ReadingsSorter implements Runnable {
+        @Override
+        public void run() {
+            while(!stop) {
+                // create comparator that compares by scalar and vector time
+                ScalarTimeComparator scComp = new ScalarTimeComparator();
+                VectorTimeComparator vcComp = new VectorTimeComparator();
+                Comparator<Reading> comp = scComp.thenComparing(vcComp);
+
+                // create temp list that will be sorted
+                List<Reading> temp = new ArrayList<>(fiveSecReadings);
+
+                // empty five sec readings for next batch of readings
+                fiveSecReadings = new HashSet<>();
+
+                // sort temp list and print it out
+                temp.sort(comp);
+                temp.forEach(System.out::println);
+
+                // calculate average reading and print it out
+                System.out.println("Average no2 reading: " + temp.stream().mapToDouble(Reading::getNo2Reading).average());
+
+                // sleep for 5 seconds
+                try {
+                    sleep(5000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
     public static synchronized void incrementVectorTime() {
         // increment vector time for this node
         if(vectorTime != null && id != null) {
